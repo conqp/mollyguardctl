@@ -1,0 +1,48 @@
+#! /usr/bin/env python3
+"""Molly guard control CLI."""
+
+from argparse import ArgumentParser
+
+from smollyguardl import CONFIG, load_config, reboot, start, stop
+
+
+def get_args():
+    """Returns the command line arguments."""
+
+    parser = ArgumentParser(description='Molly guard control CLI.')
+    subparsers = parser.add_subparsers(dest='action')
+    subparsers.add_parser('start', help='start mollyguarding')
+    subparsers.add_parser('stop', help='stop mollyguarding')
+    reboot_parser = subparsers.add_parser(
+        'reboot', help='safely reboot a LUKS-encrypted system')
+    reboot_parser.add_argument(
+        '-d', '--device', metavar='DEVICE',
+        help='the LUKS device to auto-decrypt')
+    reboot_parser.add_argument(
+        '-k', '--keyfile', metavar='KEY_FILE',
+        help='the key file to use for auto-decryption')
+    return parser.parse_args()
+
+
+def main():
+    """Runs the main program."""
+
+    args = get_args()
+    load_config()
+
+    if args.mode == 'start':
+        return start()
+
+    if args.mode == 'stop':
+        return stop()
+
+    if args.mode == 'reboot':
+        device = CONFIG.get('device', args.device)
+        keyfile = CONFIG.get('keyfile', args.keyfile)
+        return reboot(device, keyfile)
+
+    return None
+
+
+if __name__ == '__main__':
+    main()

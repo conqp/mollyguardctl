@@ -112,13 +112,24 @@ def stop(units: List[str] = None):
     return True
 
 
-def prepare_luks(device: str, keyfile: str, keysize: int):
+def prepare_luks():
     """Prepares the auto-unlocking of the respective LUKS volume."""
+
+    try:
+        device, keyfile, keysize = get_luks_settings()
+    except ConfigurationError:
+        return False
 
     with DEVRANDOM.open('rb') as random, Path(keyfile).open('wb') as key:
         key.write(random.read(keysize))
 
-    return cryptsetup('luksAddKey', device, keyfile)
+    try:
+        cryptsetup('luksAddKey', device, keyfile)
+    except CalledProcessError:
+        LOGGER.error('Could not add auto-decrypt key to LUKS volume.')
+        return False
+
+    return True
 
 
 def clear_luks():
@@ -163,15 +174,14 @@ def challenge_hostname():
 def reboot(*, ask_hostname: bool = True):
     """Reboots the device."""
 
-    try:
-        prepare_luks(*get_luks_settings())
-    except LUKSNotConfigured:
-        pass
-    except ConfigurationError:
-        return
-
     if ask_hostname and not challenge_hostname():
         return
+
+    try:
+        if not prepare_luks():
+            return
+    except LUKSNotConfigured:
+        pass
 
     try:
         systemctl('unmask', 'reboot.target')

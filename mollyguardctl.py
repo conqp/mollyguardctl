@@ -196,17 +196,26 @@ def main():
     load_config()
 
     if args.action == 'start':
-        return start(args.unit)
+        if start(args.unit):
+            exit(0)
+
+        exit(1)
 
     if args.action == 'stop':
-        return stop(args.unit)
+        if stop(args.unit):
+            exit(0)
+
+        exit(1)
 
     if args.action == 'reboot':
-        return reboot(ask_hostname=not args.no_ask_host_name)
+        if reboot(ask_hostname=not args.no_ask_host_name):
+            exit(0)
+
+        exit(1)
 
     if args.action == 'clear-luks':
         try:
-            return clear_luks()
+            clear_luks()
         except LUKSNotConfigured:
             LOGGER.warning('LUKS is not configured.')
             exit(1)
@@ -216,5 +225,7 @@ def main():
             LOGGER.error('Could not clear LUKS key.')
             LOGGER.debug(cpe)
             exit(3)
+
+        exit(0)
 
     return None

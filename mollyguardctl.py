@@ -11,7 +11,7 @@ from subprocess import CalledProcessError, check_call
 from typing import Iterable, List
 
 
-CONFIG_FILE = Path('/etc/smollyguardl.conf')
+CONFIG_FILE = Path('/etc/mollyguardctl.json')
 CONFIG = {}
 CRYPTSETUP = '/usr/bin/cryptsetup'
 DEFAULT_UNITS = {

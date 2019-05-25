@@ -246,9 +246,7 @@ def main():
         exit(1)
 
     if args.action == 'reboot':
-        ask_hostname = not args.no_ask_hostname
-
-        if reboot(ask_hostname=ask_hostname):   # pylint: disable=E1123
+        if reboot():
             exit(0)
 
         exit(1)

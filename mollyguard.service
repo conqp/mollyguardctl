@@ -1,0 +1,10 @@
+[Unit]
+Description=Prevent accidental shutdowns, reboots etc.
+
+[Service]
+ExecStart=/usr/bin/mollyguardctl start
+RemainAfterExit=true
+ExecStop=/usr/bin/mollyguardctl stop
+
+[Install]
+WantedBy=multi-user.target

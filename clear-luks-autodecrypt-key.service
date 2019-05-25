@@ -1,0 +1,9 @@
+[Unit]
+Description=Removes the LUKS auto decrypt key from the respective LUKS volume
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/mollyguardctl clear-luks
+
+[Install]
+WantedBy=multi-user.target

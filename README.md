@@ -9,3 +9,7 @@ The JSON-object expects the following key, all of which are optional:
 * `systemctl`: The systemctl binary to use. Defaults to: `/usr/bin/systemctl`
 * `cryptsetup`: The cryptsetup binary to use. Defaults to: `/usr/bin/cryptsetup`
 * `luks`: A list of `["<device>", "<keyfile>", <keysize>]` or `["<device>", "<keyfile>"]` to configure auto-decryption for the respective LUKS volume. `keysize` defaults to 2048.
+
+## Usage
+Start and enable `mollyguard.service`. On systems with */* encrypted also start and enable `clear-luks-autodecrypt-key.service`.  
+To reboot the system use `mollyguardctl reboot`.

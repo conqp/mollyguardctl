@@ -226,7 +226,7 @@ def main():
         exit(1)
 
     if args.action == 'reboot':
-        if reboot(ask_hostname=not args.no_ask_host_name):
+        if reboot(ask_hostname=not args.no_ask_hostname):
             exit(0)
 
         exit(1)

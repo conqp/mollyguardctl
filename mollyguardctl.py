@@ -88,10 +88,11 @@ def start(units: List[str] = None):
     units = units or get_units()
 
     try:
-        systemctl('mask', *units)
+        return systemctl('mask', *units)
     except CalledProcessError as cpe:
         LOGGER.error('Could not mask some units.')
         LOGGER.debug(cpe)
+        return False
 
 
 def stop(units: List[str] = None):
@@ -100,10 +101,11 @@ def stop(units: List[str] = None):
     units = units or get_units()
 
     try:
-        systemctl('unmask', *units)
+        return systemctl('unmask', *units)
     except CalledProcessError as cpe:
         LOGGER.warning('Could not unmask some units.')
         LOGGER.debug(cpe)
+        return False
 
 
 def prepare_luks(device: str, keyfile: str, keysize: int):
@@ -227,5 +229,3 @@ def main():
             exit(3)
 
         exit(0)
-
-    return None

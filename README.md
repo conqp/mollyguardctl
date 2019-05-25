@@ -12,4 +12,5 @@ The JSON-object expects the following key, all of which are optional:
 
 ## Usage
 Start and enable `mollyguard.service`. On systems with */* encrypted also start and enable `clear-luks-autodecrypt-key.service`.  
-To reboot the system use `mollyguardctl reboot`.
+Keep in mind, that you still need to configure your boot- / EFI loader to use the correct cryptkey for the respective LUKS volume.  
+To reboot the system then, use `mollyguardctl reboot`.

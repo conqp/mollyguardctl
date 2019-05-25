@@ -209,7 +209,8 @@ def get_args():
     parser = ArgumentParser(description='Molly guard control CLI.')
     subparsers = parser.add_subparsers(dest='action')
     start_parser = subparsers.add_parser('start', help='start mollyguarding')
-    start_parser.add_argument('unit', nargs='*', help='a list of units to mask')
+    start_parser.add_argument(
+        'unit', nargs='*', help='a list of units to mask')
     stop_parser = subparsers.add_parser('stop', help='stop mollyguarding')
     stop_parser.add_argument('unit', nargs='*', help='a list of units to mask')
     reboot_parser = subparsers.add_parser(

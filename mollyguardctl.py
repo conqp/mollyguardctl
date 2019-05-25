@@ -42,6 +42,13 @@ def load_config():
         LOGGER.warning('Configuration file does not exist.')
 
 
+def get_hostname():
+    """Returns the host name."""
+
+    with ETC_HOSTNAME.open('r') as file:
+        return file.read().strip()
+
+
 def get_units() -> Iterable[str]:
     """Returns the respective units."""
 
@@ -155,7 +162,7 @@ def challenge_hostname():
     """Challenge the user to enter the correct host name."""
 
     try:
-        user_hostname = input('Enter hostname: ')
+        hostname = input('Enter hostname: ')
     except KeyboardInterrupt:
         print(flush=True)
         LOGGER.error('Aborted by user.')
@@ -165,16 +172,14 @@ def challenge_hostname():
         LOGGER.error('No host name entered.')
         return False
 
-    with ETC_HOSTNAME.open('r') as file:
-        hostname = file.read()
-
-    return hostname.strip() == user_hostname
+    return hostname == get_hostname()
 
 
 def reboot(*, ask_hostname: bool = True):
     """Reboots the device."""
 
     if ask_hostname and not challenge_hostname():
+        LOGGER.error('Wrong host name. Not rebooting "%s".', get_hostname())
         return
 
     try:
@@ -185,8 +190,9 @@ def reboot(*, ask_hostname: bool = True):
 
     try:
         systemctl('unmask', 'reboot.target')
+        systemctl('unmask', 'shutdown.target')
     except CalledProcessError as cpe:
-        LOGGER.warning('Could not unmask reboot.target.')
+        LOGGER.warning('Could not unmask necessary targets.')
         LOGGER.debug(cpe)
         return
 

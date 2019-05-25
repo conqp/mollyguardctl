@@ -169,7 +169,7 @@ def mollyguard():
     """Runs mollyguard checks."""
 
     if CONFIG.get('ask_hostname', True) and not challenge_hostname():
-        LOGGER.error('Wrong host name. Not rebooting "%s".', gethostname())
+        LOGGER.error('Wrong host name. It actually is: "%s".', gethostname())
         return False
 
     try:
@@ -177,14 +177,6 @@ def mollyguard():
             return False
     except LUKSNotConfigured:
         pass
-
-    try:
-        systemctl('unmask', 'reboot.target')
-        systemctl('unmask', 'shutdown.target')
-    except CalledProcessError as cpe:
-        LOGGER.warning('Could not unmask necessary targets.')
-        LOGGER.debug(cpe)
-        return False
 
     return True
 
@@ -206,6 +198,14 @@ def mollyguarded(function):
 @mollyguarded
 def reboot():
     """Reboots the device."""
+
+    try:
+        systemctl('unmask', 'reboot.target')
+        systemctl('unmask', 'shutdown.target')
+    except CalledProcessError as cpe:
+        LOGGER.warning('Could not unmask necessary targets.')
+        LOGGER.debug(cpe)
+        return
 
     try:
         systemctl('reboot')

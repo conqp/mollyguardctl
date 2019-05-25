@@ -1,7 +1,6 @@
 """Systemd molly guard suite to prevent accidental
 reboots and provide autodecrypt option for LUKS.
 """
-from contextlib import suppress
 from json import load
 from logging import getLogger
 from pathlib import Path
@@ -20,22 +19,55 @@ DEFAULT_UNITS = {
     'shutdown.target', 'suspend.target', 'suspend-then-hibernate.target'
 }
 DEVRANDOM = Path('/dev/random')
+ETC_HOSTNAME = Path('/etc/hostname')
 LOGGER = getLogger('smollyguarl')
 SYSTEMCTL = '/usr/bin/systemctl'
+
+
+class ConfigurationError(Exception):
+    """Indicates an error in the configuration."""
+
+
+class LUKSNotConfigured(Exception):
+    """Indicates that LUKS is not configured."""
 
 
 def load_config():
     """Reads the config file."""
 
-    with suppress(FileNotFoundError):
+    try:
         with CONFIG_FILE.open('r') as config:
             CONFIG.update(load(config))
+    except FileNotFoundError:
+        LOGGER.warning('Configuration file does not exist.')
 
 
 def get_units() -> Iterable[str]:
     """Returns the respective units."""
 
     return CONFIG.get('units', DEFAULT_UNITS)
+
+
+def get_luks_settings():
+    """Returns the LUKS settings."""
+
+    luks_settings = CONFIG.get('luks')
+
+    if luks_settings is None:
+        raise LUKSNotConfigured()
+
+    try:
+        device, keyfile, keysize = luks_settings
+    except ValueError:
+        try:
+            device, keyfile = luks_settings
+        except ValueError:
+            LOGGER.error('Invalid LUKS settings: %s', luks_settings)
+            raise ConfigurationError()
+
+        keysize = 2048
+
+    return (device, keyfile, keysize)
 
 
 def systemctl(action: str, *units: str):
@@ -64,30 +96,47 @@ def stop():
         LOGGER.debug(cpe)
 
 
-def generate_luks_key(keyfile: Path, keysize: int = 2048):
-    """Generates a LUKS key."""
+def prepare_luks(device: str, keyfile: str, keysize: int):
+    """Prepares the auto-unlocking of the respective LUKS volume."""
 
-    with DEVRANDOM.open('rb') as random, keyfile.open('wb') as key:
+    with DEVRANDOM.open('rb') as random, Path(keyfile).open('wb') as key:
         key.write(random.read(keysize))
 
-
-def add_luks_key(device: Path, keyfile: Path):
-    """Adds the key file to the respective device."""
-
     cryptsetup = CONFIG.get('cryptsetup', CRYPTSETUP)
-    return check_call((cryptsetup, 'luksAddKey', str(device), str(keyfile)))
+    return check_call((cryptsetup, 'luksAddKey', device, keyfile))
 
 
-def reboot(device: Path, keyfile: Path, *, keysize: int = 2048):
-    """Reboots the device."""
-
-    generate_luks_key(keyfile, keysize=keysize)
+def challenge_hostname():
+    """Challenge the user to enter the correct host name."""
 
     try:
-        add_luks_key(device, keyfile)
-    except CalledProcessError as cpe:
-        LOGGER.error('Could not add key file.')
-        LOGGER.debug(cpe)
+        user_hostname = input('Enter hostname: ')
+    except KeyboardInterrupt:
+        print(flush=True)
+        LOGGER.error('Aborted by user.')
+        return False
+    except EOFError:
+        print(flush=True)
+        LOGGER.error('No host name entered.')
+        return False
+
+    with ETC_HOSTNAME.open('r') as file:
+        hostname = file.read()
+
+    return hostname.strip() == user_hostname
+
+
+def reboot(*, ask_hostname: bool = True):
+    """Reboots the device."""
+
+    try:
+        prepare_luks(*get_luks_settings())
+    except LUKSNotConfigured:
+        pass
+    except ConfigurationError:
+        return
+
+    if ask_hostname and not challenge_hostname():
         return
 
     try:

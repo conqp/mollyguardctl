@@ -11,16 +11,15 @@ def get_args():
 
     parser = ArgumentParser(description='Molly guard control CLI.')
     subparsers = parser.add_subparsers(dest='action')
-    subparsers.add_parser('start', help='start mollyguarding')
-    subparsers.add_parser('stop', help='stop mollyguarding')
+    start_parser = subparsers.add_parser('start', help='start mollyguarding')
+    start_parser.add_argument('unit', nargs='*', help='a list of units to mask')
+    stop_parser = subparsers.add_parser('stop', help='stop mollyguarding')
+    stop_parser.add_argument('unit', nargs='*', help='a list of units to mask')
     reboot_parser = subparsers.add_parser(
-        'reboot', help='safely reboot a LUKS-encrypted system')
+        'reboot', help='safely reboot the system')
     reboot_parser.add_argument(
-        '-d', '--device', metavar='DEVICE',
-        help='the LUKS device to auto-decrypt')
-    reboot_parser.add_argument(
-        '-k', '--keyfile', metavar='KEY_FILE',
-        help='the key file to use for auto-decryption')
+        '-n', '--no-ask-hostname', action='store_true',
+        help='do not ask the host name before rebooting')
     return parser.parse_args()
 
 
@@ -31,15 +30,13 @@ def main():
     load_config()
 
     if args.mode == 'start':
-        return start()
+        return start(args.unit)
 
     if args.mode == 'stop':
-        return stop()
+        return stop(args.unit)
 
     if args.mode == 'reboot':
-        device = CONFIG.get('device', args.device)
-        keyfile = CONFIG.get('keyfile', args.keyfile)
-        return reboot(device, keyfile)
+        return reboot(ask_hostname=not args.no_ask_host_name)
 
     return None
 

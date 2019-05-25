@@ -13,7 +13,7 @@ setup(
     maintainer='Richard Neumann',
     maintainer_email='<mail at richard dash neumann period de>',
     py_modules=['mollyguardctl'],
-    scripts=['files/mollyguardctl'],
+    scripts=['mollyguardctl'],
     data_files=[
         ('/usr/lib/systemd/system', [
             'clear-luks-autodecrypt-key.service',

@@ -3,12 +3,13 @@ A suite to mollyguard your server to prevent accidental shutdowns, reboots, susp
 
 ## Configuration
 `mollyguardctl` is configured via `/etc/mollyguardctl.json`.  
-The JSON-object expects the following key, all of which are optional:
+The JSON-object expects the following keys, all of which are optional:
 
-* `units`: A list of systemd units to mask. Defaults to: `["halt.target", "hibernate.target", "poweroff.target", "reboot.target", "shutdown.target", "suspend.target", "suspend-then-hibernate.target"]`
-* `systemctl`: The systemctl binary to use. Defaults to: `/usr/bin/systemctl`
-* `cryptsetup`: The cryptsetup binary to use. Defaults to: `/usr/bin/cryptsetup`
-* `luks`: A list of `["<device>", "<keyfile>", <keysize>]` or `["<device>", "<keyfile>"]` to configure auto-decryption for the respective LUKS volume. `keysize` defaults to 2048.
+* `units` A list of systemd units to mask. Defaults to: `["halt.target", "hibernate.target", "poweroff.target", "reboot.target", "shutdown.target", "suspend.target", "suspend-then-hibernate.target"]`
+* `systemctl` The systemctl binary to use. Defaults to: `/usr/bin/systemctl`
+* `cryptsetup` The cryptsetup binary to use. Defaults to: `/usr/bin/cryptsetup`
+* `luks` A list of `["<device>", "<keyfile>", <keysize>]` or `["<device>", "<keyfile>"]` to configure auto-decryption for the respective LUKS volume. `keysize` defaults to 2048.
+* `ask_hostname` Specifies whether to prompt for the host name. Defaults to: `true`.
 
 ## Usage
 Start and enable `mollyguard.service`. On systems with */* encrypted also start and enable `clear-luks-autodecrypt-key.service`.  

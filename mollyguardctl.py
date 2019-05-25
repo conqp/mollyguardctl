@@ -3,13 +3,14 @@
 reboots and provide autodecrypt option for LUKS.
 """
 from argparse import ArgumentParser
+from functools import wraps
 from sys import exit    # pylint: disable=W0622
 from json import load
 from logging import getLogger
 from pathlib import Path
 from socket import gethostname
 from subprocess import CalledProcessError, check_call
-from typing import Iterable, List
+from typing import Iterable
 
 
 CONFIG_FILE = Path('/etc/mollyguardctl.json')
@@ -82,13 +83,11 @@ def cryptsetup(action: str, *args: str):
     return check_call((CONFIG.get('cryptsetup', CRYPTSETUP), action, *args))
 
 
-def start(units: List[str] = None):
+def start():
     """Masks the configured units."""
 
-    units = units or get_units()
-
     try:
-        systemctl('mask', *units)
+        systemctl('mask', *get_units())
     except CalledProcessError as cpe:
         LOGGER.error('Could not mask some units.')
         LOGGER.debug(cpe)
@@ -97,13 +96,11 @@ def start(units: List[str] = None):
     return True
 
 
-def stop(units: List[str] = None):
+def stop():
     """Unmasks the configured units."""
 
-    units = units or get_units()
-
     try:
-        systemctl('unmask', *units)
+        systemctl('unmask', *get_units())
     except CalledProcessError as cpe:
         LOGGER.warning('Could not unmask some units.')
         LOGGER.debug(cpe)
@@ -168,16 +165,16 @@ def challenge_hostname():
     return hostname == gethostname()
 
 
-def reboot(*, ask_hostname: bool = True):
-    """Reboots the device."""
+def mollyguard():
+    """Runs mollyguard checks."""
 
-    if ask_hostname and not challenge_hostname():
+    if CONFIG.get('ask_hostname', True) and not challenge_hostname():
         LOGGER.error('Wrong host name. Not rebooting "%s".', gethostname())
-        return
+        return False
 
     try:
         if not prepare_luks():
-            return
+            return False
     except LUKSNotConfigured:
         pass
 
@@ -187,7 +184,28 @@ def reboot(*, ask_hostname: bool = True):
     except CalledProcessError as cpe:
         LOGGER.warning('Could not unmask necessary targets.')
         LOGGER.debug(cpe)
-        return
+        return False
+
+    return True
+
+
+def mollyguarded(function):
+    """Decorator factory to molly-guard a function."""
+
+    @wraps(function)
+    def wrapper(*args, **kwargs):
+        """Wraps the original function."""
+        if mollyguard():
+            return function(*args, **kwargs)
+
+        return None
+
+    return wrapper
+
+
+@mollyguarded
+def reboot():
+    """Reboots the device."""
 
     try:
         systemctl('reboot')
@@ -201,19 +219,11 @@ def get_args():
 
     parser = ArgumentParser(description='Molly guard control CLI.')
     subparsers = parser.add_subparsers(dest='action')
-    start_parser = subparsers.add_parser('start', help='start mollyguarding')
-    start_parser.add_argument(
-        'unit', nargs='*', help='a list of units to mask')
-    stop_parser = subparsers.add_parser('stop', help='stop mollyguarding')
-    stop_parser.add_argument('unit', nargs='*', help='a list of units to mask')
-    reboot_parser = subparsers.add_parser(
-        'reboot', help='safely reboot the system')
-    reboot_parser.add_argument(
-        '-n', '--no-ask-hostname', action='store_true',
-        help='do not ask the host name before rebooting')
+    subparsers.add_parser('start', help='start mollyguarding')
+    subparsers.add_parser('stop', help='stop mollyguarding')
+    subparsers.add_parser('reboot', help='safely reboot the system')
     subparsers.add_parser(
-        'clear-luks',
-        help='clears the LUKS auto-decryption key from the LUKS volume')
+        'clear-luks', help='clear the LUKS auto-decryption key')
     return parser.parse_args()
 
 
@@ -224,19 +234,21 @@ def main():
     load_config()
 
     if args.action == 'start':
-        if start(args.unit):
+        if start():
             exit(0)
 
         exit(1)
 
     if args.action == 'stop':
-        if stop(args.unit):
+        if stop():
             exit(0)
 
         exit(1)
 
     if args.action == 'reboot':
-        if reboot(ask_hostname=not args.no_ask_hostname):
+        ask_hostname = not args.no_ask_hostname
+
+        if reboot(ask_hostname=ask_hostname):   # pylint: disable=E1123
             exit(0)
 
         exit(1)

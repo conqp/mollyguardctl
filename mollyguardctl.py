@@ -195,16 +195,16 @@ def main():
     args = get_args()
     load_config()
 
-    if args.mode == 'start':
+    if args.action == 'start':
         return start(args.unit)
 
-    if args.mode == 'stop':
+    if args.action == 'stop':
         return stop(args.unit)
 
-    if args.mode == 'reboot':
+    if args.action == 'reboot':
         return reboot(ask_hostname=not args.no_ask_host_name)
 
-    if args.mode == 'clear-luks':
+    if args.action == 'clear-luks':
         try:
             return clear_luks()
         except LUKSNotConfigured:

@@ -85,7 +85,7 @@ def cryptsetup(action: str, *args: str):
 def start(units: List[str] = None):
     """Masks the configured units."""
 
-    units = get_units() if units is None else units
+    units = units or get_units()
 
     try:
         systemctl('mask', *units)
@@ -97,7 +97,7 @@ def start(units: List[str] = None):
 def stop(units: List[str] = None):
     """Unmasks the configured units."""
 
-    units = get_units() if units is None else units
+    units = units or get_units()
 
     try:
         systemctl('unmask', *units)

@@ -183,7 +183,7 @@ def get_args():
     reboot_parser.add_argument(
         '-n', '--no-ask-hostname', action='store_true',
         help='do not ask the host name before rebooting')
-    subparsers.add(
+    subparsers.add_parser(
         'clear-luks',
         help='clears the LUKS auto-decryption key from the LUKS volume')
     return parser.parse_args()

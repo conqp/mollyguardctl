@@ -7,6 +7,7 @@ from sys import exit    # pylint: disable=W0622
 from json import load
 from logging import getLogger
 from pathlib import Path
+from socket import gethostname
 from subprocess import CalledProcessError, check_call
 from typing import Iterable, List
 
@@ -19,8 +20,7 @@ DEFAULT_UNITS = {
     'shutdown.target', 'suspend.target', 'suspend-then-hibernate.target'
 }
 DEVRANDOM = Path('/dev/random')
-ETC_HOSTNAME = Path('/etc/hostname')
-LOGGER = getLogger('smollyguarl')
+LOGGER = getLogger('mollyguardctl')
 SYSTEMCTL = '/usr/bin/systemctl'
 
 
@@ -40,13 +40,6 @@ def load_config():
             CONFIG.update(load(config))
     except FileNotFoundError:
         LOGGER.warning('Configuration file does not exist.')
-
-
-def get_hostname():
-    """Returns the host name."""
-
-    with ETC_HOSTNAME.open('r') as file:
-        return file.read().strip()
 
 
 def get_units() -> Iterable[str]:
@@ -172,14 +165,14 @@ def challenge_hostname():
         LOGGER.error('No host name entered.')
         return False
 
-    return hostname == get_hostname()
+    return hostname == gethostname()
 
 
 def reboot(*, ask_hostname: bool = True):
     """Reboots the device."""
 
     if ask_hostname and not challenge_hostname():
-        LOGGER.error('Wrong host name. Not rebooting "%s".', get_hostname())
+        LOGGER.error('Wrong host name. Not rebooting "%s".', gethostname())
         return
 
     try:

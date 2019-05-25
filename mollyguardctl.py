@@ -88,11 +88,13 @@ def start(units: List[str] = None):
     units = units or get_units()
 
     try:
-        return systemctl('mask', *units)
+        systemctl('mask', *units)
     except CalledProcessError as cpe:
         LOGGER.error('Could not mask some units.')
         LOGGER.debug(cpe)
         return False
+
+    return True
 
 
 def stop(units: List[str] = None):
@@ -101,11 +103,13 @@ def stop(units: List[str] = None):
     units = units or get_units()
 
     try:
-        return systemctl('unmask', *units)
+        systemctl('unmask', *units)
     except CalledProcessError as cpe:
         LOGGER.warning('Could not unmask some units.')
         LOGGER.debug(cpe)
         return False
+
+    return True
 
 
 def prepare_luks(device: str, keyfile: str, keysize: int):
@@ -121,7 +125,19 @@ def clear_luks():
     """Clears the LUKS auto-decrypt key from the LUKS device."""
 
     device, keyfile, *_ = get_luks_settings()
-    return cryptsetup('luksRemoveKey', device, keyfile)
+
+    try:
+        cryptsetup('luksRemoveKey', device, keyfile)
+    except CalledProcessError:
+        LOGGER.error('Could not clear LUKS key from %s.', device)
+        return False
+    except LUKSNotConfigured:
+        LOGGER.warning('LUKS is not configured.')
+        return False
+    except ConfigurationError:
+        return False
+
+    return True
 
 
 def challenge_hostname():
@@ -216,16 +232,7 @@ def main():
         exit(1)
 
     if args.action == 'clear-luks':
-        try:
-            clear_luks()
-        except LUKSNotConfigured:
-            LOGGER.warning('LUKS is not configured.')
-            exit(1)
-        except ConfigurationError:
-            exit(2)
-        except CalledProcessError as cpe:
-            LOGGER.error('Could not clear LUKS key.')
-            LOGGER.debug(cpe)
-            exit(3)
+        if clear_luks():
+            exit(0)
 
-        exit(0)
+        exit(1)

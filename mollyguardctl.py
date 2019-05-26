@@ -1,4 +1,3 @@
-#! /usr/bin/env python3
 """Systemd molly guard suite to prevent accidental
 reboots and provide autodecrypt option for LUKS.
 """

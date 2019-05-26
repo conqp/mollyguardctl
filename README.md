@@ -8,7 +8,7 @@ The JSON-object expects the following keys, all of which are optional:
 * `units` A list of systemd units to mask. Defaults to: `["halt.target", "hibernate.target", "poweroff.target", "reboot.target", "shutdown.target", "suspend.target", "suspend-then-hibernate.target"]`
 * `systemctl` The systemctl binary to use. Defaults to: `/usr/bin/systemctl`
 * `cryptsetup` The cryptsetup binary to use. Defaults to: `/usr/bin/cryptsetup`
-* `luks` A list of `["<device>", "<keyfile>", <keysize>]` or `["<device>", "<keyfile>"]` to configure auto-decryption for the respective LUKS volume. `keysize` defaults to 2048.
+* `luks` An object like `{"device": <device>", "keyfile": <keyfile>", "keysize": <keysize>}` to configure auto-decryption for the respective LUKS volume. `keysize` is optional and defaults to 2048.
 * `ask_hostname` Specifies whether to prompt for the host name. Defaults to: `true`.
 
 ## Usage

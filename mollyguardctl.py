@@ -51,23 +51,22 @@ def get_units() -> Iterable[str]:
 def get_luks_settings():
     """Returns the LUKS settings."""
 
-    luks_settings = CONFIG.get('luks')
+    luks = CONFIG.get('luks')
 
-    if luks_settings is None:
+    if luks is None:
         raise LUKSNotConfigured()
 
     try:
-        device, keyfile, keysize = luks_settings
-    except ValueError:
-        try:
-            device, keyfile = luks_settings
-        except ValueError:
-            LOGGER.error('Invalid LUKS settings: %s', luks_settings)
-            raise ConfigurationError()
+        yield luks['device']
+    except KeyError:
+        raise ConfigurationError('Missing LUKS device.')
 
-        keysize = 2048
+    try:
+        yield luks['keyfile']
+    except KeyError:
+        raise ConfigurationError('Missing LUKS key file.')
 
-    return (device, keyfile, keysize)
+    yield luks.get('keysize', 2048)
 
 
 def systemctl(action: str, *units: str):
@@ -113,7 +112,8 @@ def prepare_luks():
 
     try:
         device, keyfile, keysize = get_luks_settings()
-    except ConfigurationError:
+    except ConfigurationError as error:
+        LOGGER.error(error)
         return False
 
     with DEVRANDOM.open('rb') as random, Path(keyfile).open('wb') as key:
@@ -141,7 +141,8 @@ def clear_luks():
     except LUKSNotConfigured:
         LOGGER.warning('LUKS is not configured.')
         return False
-    except ConfigurationError:
+    except ConfigurationError as error:
+        LOGGER.error(error)
         return False
 
     return True

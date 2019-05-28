@@ -3,7 +3,8 @@ reboots and provide autodecrypt option for LUKS.
 """
 from argparse import ArgumentParser
 from functools import wraps
-from sys import exit    # pylint: disable=W0622
+from os import urandom
+from sys import argv, exit  # pylint: disable=W0622
 from json import load
 from logging import getLogger
 from pathlib import Path
@@ -19,8 +20,7 @@ DEFAULT_UNITS = {
     'halt.target', 'hibernate.target', 'poweroff.target', 'reboot.target',
     'shutdown.target', 'suspend.target', 'suspend-then-hibernate.target'
 }
-DEVRANDOM = Path('/dev/random')
-LOGGER = getLogger('mollyguardctl')
+LOGGER = getLogger(Path(argv[0]).name or __file__)
 SYSTEMCTL = '/usr/bin/systemctl'
 
 
@@ -116,8 +116,8 @@ def prepare_luks():
         LOGGER.error(error)
         return False
 
-    with DEVRANDOM.open('rb') as random, Path(keyfile).open('wb') as key:
-        key.write(random.read(keysize))
+    with Path(keyfile).open('wb') as key:
+        key.write(urandom(keysize))
 
     try:
         cryptsetup('luksAddKey', device, keyfile)

@@ -124,6 +124,10 @@ def prepare_luks():
     except CalledProcessError:
         LOGGER.error('Could not add auto-decrypt key to LUKS volume.')
         return False
+    except KeyboardInterrupt:
+        print(flush=True)
+        LOGGER.error('Aborted by user.')
+        return False
 
     return True
 

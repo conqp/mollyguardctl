@@ -2,6 +2,7 @@
 reboots and provide autodecrypt option for LUKS.
 """
 from argparse import ArgumentParser
+from contextlib import suppress
 from functools import wraps
 from os import urandom
 from sys import argv, exit  # pylint: disable=W0622
@@ -30,6 +31,14 @@ class ConfigurationError(Exception):
 
 class LUKSNotConfigured(Exception):
     """Indicates that LUKS is not configured."""
+
+
+class ChallengeFailed(Exception):
+    """Indicates that a user challenge failed."""
+
+
+class UserAbort(Exception):
+    """Indicates that the user aborted a challenge."""
 
 
 def load_config():
@@ -126,8 +135,7 @@ def prepare_luks():
         return False
     except KeyboardInterrupt:
         print(flush=True)
-        LOGGER.error('Aborted by user.')
-        return False
+        raise UserAbort()
 
     return True
 
@@ -157,14 +165,9 @@ def challenge_hostname():
 
     try:
         hostname = input('Enter hostname: ')
-    except KeyboardInterrupt:
+    except (EOFError, KeyboardInterrupt):
         print(flush=True)
-        LOGGER.error('Aborted by user.')
-        return False
-    except EOFError:
-        print(flush=True)
-        LOGGER.error('No host name entered.')
-        return False
+        raise UserAbort()
 
     return hostname == gethostname()
 
@@ -174,15 +177,11 @@ def mollyguard():
 
     if CONFIG.get('ask_hostname', True) and not challenge_hostname():
         LOGGER.error('Wrong host name. It actually is: "%s".', gethostname())
-        return False
+        raise ChallengeFailed('hostname')
 
-    try:
+    with suppress(LUKSNotConfigured):
         if not prepare_luks():
-            return False
-    except LUKSNotConfigured:
-        pass
-
-    return True
+            raise ChallengeFailed('LUKS')
 
 
 def mollyguarded(function):
@@ -191,10 +190,14 @@ def mollyguarded(function):
     @wraps(function)
     def wrapper(*args, **kwargs):
         """Wraps the original function."""
-        if mollyguard():
-            return function(*args, **kwargs)
-
-        return None
+        try:
+            mollyguard()
+        except UserAbort:
+            LOGGER.error('Aborted by user.')
+        except ChallengeFailed as challenge:
+            LOGGER.error('Challenge %s failed.', challenge)
+        else:
+            function(*args, **kwargs)
 
     return wrapper
 

@@ -191,10 +191,10 @@ def mollyguarded(function):
         """Wraps the original function."""
         try:
             mollyguard()
-        except UserAbort:
-            LOGGER.error('Aborted by user.')
         except ChallengeFailed as challenge:
             LOGGER.error('Challenge %s failed.', challenge)
+        except UserAbort:
+            LOGGER.error('Aborted by user.')
         else:
             function(*args, **kwargs)
 

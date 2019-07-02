@@ -2,11 +2,11 @@
 reboots and provide autodecrypt option for LUKS.
 """
 from argparse import ArgumentParser
+from configparser import ConfigParser
 from contextlib import suppress
 from functools import wraps
 from os import urandom
 from sys import argv, exit  # pylint: disable=W0622
-from json import load
 from logging import getLogger
 from pathlib import Path
 from socket import gethostname
@@ -14,8 +14,8 @@ from subprocess import CalledProcessError, check_call
 from typing import Iterable
 
 
-CONFIG_FILE = Path('/etc/mollyguardctl.json')
-CONFIG = {}
+CONFIG_FILE = '/etc/mollyguardctl.conf'
+CONFIG = ConfigParser()
 CRYPTSETUP = '/usr/bin/cryptsetup'
 DEFAULT_UNITS = {
     'halt.target', 'hibernate.target', 'poweroff.target', 'reboot.target',
@@ -41,28 +41,23 @@ class UserAbort(Exception):
     """Indicates that the user aborted a challenge."""
 
 
-def load_config():
-    """Reads the config file."""
-
-    try:
-        with CONFIG_FILE.open('r') as config:
-            CONFIG.update(load(config))
-    except FileNotFoundError:
-        LOGGER.warning('Configuration file does not exist.')
-
-
 def get_units() -> Iterable[str]:
     """Returns the respective units."""
 
-    return CONFIG.get('units', DEFAULT_UNITS)
+    try:
+        units = CONFIG['MollyGuard']['units']
+    except KeyError:
+        return DEFAULT_UNITS
+
+    return units.split()
 
 
 def get_luks_settings():
     """Returns the LUKS settings."""
 
-    luks = CONFIG.get('luks')
-
-    if luks is None:
+    try:
+        luks = CONFIG['LUKS']
+    except KeyError:
         raise LUKSNotConfigured()
 
     try:
@@ -75,19 +70,24 @@ def get_luks_settings():
     except KeyError:
         raise ConfigurationError('Missing LUKS key file.')
 
-    yield luks.get('keysize', 2048)
+    try:
+        yield int(luks.get('keysize', fallback=2048))
+    except ValueError:
+        raise ConfigurationError('Key size is not an integer.')
 
 
 def systemctl(action: str, *units: str):
     """Invokes systemctl on the respective units."""
 
-    return check_call((CONFIG.get('systemctl', SYSTEMCTL), action, *units))
+    systemctl_ = CONFIG.get('MollyGuard', 'systemctl', fallback=SYSTEMCTL)
+    return check_call((systemctl_, action, *units))
 
 
 def cryptsetup(action: str, *args: str):
     """Runs cryptsetup."""
 
-    return check_call((CONFIG.get('cryptsetup', CRYPTSETUP), action, *args))
+    cryptsetup_ = CONFIG.get('MollyGuard', 'cryptsetup', fallback=SYSTEMCTL)
+    return check_call((cryptsetup_, action, *args))
 
 
 def start():
@@ -174,7 +174,9 @@ def challenge_hostname():
 def mollyguard():
     """Runs mollyguard checks."""
 
-    if CONFIG.get('ask_hostname', True) and not challenge_hostname():
+    ch_hostname = CONFIG.getboolean('MollyGuard', 'hostname', fallback=True)
+
+    if ch_hostname and not challenge_hostname():
         LOGGER.error('Wrong host name. It actually is: "%s".', gethostname())
         raise ChallengeFailed('hostname')
 
@@ -237,7 +239,7 @@ def main():
     """Runs the main program."""
 
     args = get_args()
-    load_config()
+    CONFIG.read(CONFIG_FILE)
 
     if args.action == 'start':
         if start():

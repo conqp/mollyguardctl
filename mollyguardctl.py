@@ -234,7 +234,8 @@ def get_args():
     reboot_parser = subparsers.add_parser(
         'reboot', help='safely reboot the system')
     reboot_parser.add_argument(
-        '-l', '--force-luks', help='require LUKS unlocking')
+        '-l', '--force-luks', action='store_true',
+        help='require LUKS unlocking')
     subparsers.add_parser(
         'clear-luks', help='clear the LUKS auto-decryption key')
     return parser.parse_args()

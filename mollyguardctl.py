@@ -3,7 +3,6 @@ reboots and provide autodecrypt option for LUKS.
 """
 from argparse import ArgumentParser
 from configparser import ConfigParser
-from contextlib import suppress
 from functools import wraps
 from os import urandom
 from sys import argv, exit  # pylint: disable=W0622
@@ -171,7 +170,7 @@ def challenge_hostname():
     return hostname == gethostname()
 
 
-def mollyguard():
+def mollyguard(force_luks=False):
     """Runs mollyguard checks."""
 
     ch_hostname = CONFIG.getboolean('MollyGuard', 'hostname', fallback=True)
@@ -180,19 +179,22 @@ def mollyguard():
         LOGGER.error('Wrong host name. It actually is: "%s".', gethostname())
         raise ChallengeFailed('hostname')
 
-    with suppress(LUKSNotConfigured):
+    try:
         if not prepare_luks():
             raise ChallengeFailed('LUKS')
+    except LUKSNotConfigured:
+        if force_luks:
+            raise ChallengeFailed('Enforced LUKS')
 
 
 def mollyguarded(function):
     """Decorator factory to molly-guard a function."""
 
     @wraps(function)
-    def wrapper(*args, **kwargs):
+    def wrapper(*args, force_luks=False, **kwargs):
         """Wraps the original function."""
         try:
-            mollyguard()
+            mollyguard(force_luks=force_luks)
         except ChallengeFailed as challenge:
             LOGGER.error('Challenge %s failed.', challenge)
         except UserAbort:
@@ -229,7 +231,10 @@ def get_args():
     subparsers = parser.add_subparsers(dest='action')
     subparsers.add_parser('start', help='start mollyguarding')
     subparsers.add_parser('stop', help='stop mollyguarding')
-    subparsers.add_parser('reboot', help='safely reboot the system')
+    reboot_parser = subparsers.add_parser(
+        'reboot', help='safely reboot the system')
+    reboot_parser.add_argument(
+        '-l', '--force-luks', help='require LUKS unlocking')
     subparsers.add_parser(
         'clear-luks', help='clear the LUKS auto-decryption key')
     return parser.parse_args()
@@ -254,7 +259,7 @@ def main():
         exit(1)
 
     if args.action == 'reboot':
-        if reboot():
+        if reboot(force_luks=args.force_luks):  # pylint: disable=E1123
             exit(0)
 
         exit(1)

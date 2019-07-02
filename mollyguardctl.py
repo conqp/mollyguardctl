@@ -86,7 +86,7 @@ def systemctl(action: str, *units: str):
 def cryptsetup(action: str, *args: str):
     """Runs cryptsetup."""
 
-    cryptsetup_ = CONFIG.get('MollyGuard', 'cryptsetup', fallback=SYSTEMCTL)
+    cryptsetup_ = CONFIG.get('MollyGuard', 'cryptsetup', fallback=CRYPTSETUP)
     return check_call((cryptsetup_, action, *args))
 
 

@@ -17,8 +17,13 @@ CONFIG_FILE = '/etc/mollyguardctl.conf'
 CONFIG = ConfigParser()
 CRYPTSETUP = '/usr/bin/cryptsetup'
 DEFAULT_UNITS = {
-    'halt.target', 'hibernate.target', 'poweroff.target', 'reboot.target',
-    'shutdown.target', 'suspend.target', 'suspend-then-hibernate.target'
+    'halt.target',
+    'hibernate.target',
+    'poweroff.target',
+    'reboot.target',
+    'shutdown.target',
+    'suspend.target',
+    'suspend-then-hibernate.target'
 }
 LOGGER = getLogger(Path(argv[0]).name or __file__)
 SYSTEMCTL = '/usr/bin/systemctl'

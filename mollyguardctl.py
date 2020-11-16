@@ -230,11 +230,10 @@ def get_args():
     subparsers = parser.add_subparsers(dest='action')
     subparsers.add_parser('start', help='start mollyguarding')
     subparsers.add_parser('stop', help='stop mollyguarding')
-    reboot_parser = subparsers.add_parser(
-        'reboot', help='safely reboot the system')
+    reboot_parser = subparsers.add_parser('reboot', help='reboot the system')
     reboot_parser.add_argument(
         '-l', '--force-luks', action='store_true',
-        help='require LUKS unlocking')
+        help='require LUKS auto-decryption')
     subparsers.add_parser(
         'clear-luks', help='clear the LUKS auto-decryption key')
     return parser.parse_args()

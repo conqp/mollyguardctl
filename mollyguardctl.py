@@ -57,22 +57,22 @@ def get_luks_settings():
     try:
         luks = CONFIG['LUKS']
     except KeyError:
-        raise LUKSNotConfigured()
+        raise LUKSNotConfigured() from None
 
     try:
         yield luks['device']
     except KeyError:
-        raise ConfigurationError('Missing LUKS device.')
+        raise ConfigurationError('Missing LUKS device.') from None
 
     try:
         yield luks['keyfile']
     except KeyError:
-        raise ConfigurationError('Missing LUKS key file.')
+        raise ConfigurationError('Missing LUKS key file.') from None
 
     try:
         yield luks.getint('keysize', fallback=2048)
     except ValueError:
-        raise ConfigurationError('Key size is not an integer.')
+        raise ConfigurationError('Key size is not an integer.') from None
 
 
 def systemctl(action: str, *units: str):
@@ -133,7 +133,7 @@ def prepare_luks():
         LOGGER.error('Could not add auto-decrypt key to LUKS volume.')
         return False
     except KeyboardInterrupt:
-        raise UserAbort()
+        raise UserAbort() from None
 
     return True
 
@@ -165,7 +165,7 @@ def challenge_hostname():
         hostname = input('Enter hostname: ')
     except (EOFError, KeyboardInterrupt):
         print(flush=True)
-        raise UserAbort()
+        raise UserAbort() from None
 
     return hostname == gethostname()
 
@@ -184,7 +184,7 @@ def mollyguard(force_luks: bool = False):
             raise ChallengeFailed('LUKS')
     except LUKSNotConfigured:
         if force_luks:
-            raise ChallengeFailed('Enforced LUKS')
+            raise ChallengeFailed('Enforced LUKS') from None
 
 
 def mollyguarded(function: Callable):

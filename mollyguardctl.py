@@ -70,7 +70,7 @@ def get_luks_settings():
         raise ConfigurationError('Missing LUKS key file.')
 
     try:
-        yield int(luks.get('keysize', fallback=2048))
+        yield luks.getint('keysize', fallback=2048)
     except ValueError:
         raise ConfigurationError('Key size is not an integer.')
 
@@ -170,7 +170,7 @@ def challenge_hostname():
     return hostname == gethostname()
 
 
-def mollyguard(force_luks=False):
+def mollyguard(force_luks: bool = False):
     """Runs mollyguard checks."""
 
     ch_hostname = CONFIG.getboolean('MollyGuard', 'hostname', fallback=True)
@@ -187,11 +187,11 @@ def mollyguard(force_luks=False):
             raise ChallengeFailed('Enforced LUKS')
 
 
-def mollyguarded(function):
+def mollyguarded(function: Callable):
     """Decorator factory to molly-guard a function."""
 
     @wraps(function)
-    def wrapper(*args, force_luks=False, **kwargs):
+    def wrapper(*args, force_luks: bool = False, **kwargs):
         """Wraps the original function."""
         try:
             mollyguard(force_luks=force_luks)
@@ -248,16 +248,10 @@ def main():
     CONFIG.read(CONFIG_FILE)
 
     if args.action == 'start':
-        if start():
-            exit(0)
-
-        exit(1)
+        exit(0 if start() else 1)
 
     if args.action == 'stop':
-        if stop():
-            exit(0)
-
-        exit(1)
+        exit(0 if stop() else 1)
 
     if args.action == 'reboot':
         if reboot(force_luks=args.force_luks):  # pylint: disable=E1123
@@ -266,7 +260,4 @@ def main():
         exit(1)
 
     if args.action == 'clear-luks':
-        if clear_luks():
-            exit(0)
-
-        exit(1)
+        exit(0 if clear_luks() else 1)

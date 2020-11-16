@@ -210,8 +210,7 @@ def reboot():
     """Reboots the device."""
 
     try:
-        systemctl('unmask', 'reboot.target')
-        systemctl('unmask', 'shutdown.target')
+        systemctl('unmask', 'reboot.target', 'shutdown.target')
     except CalledProcessError as cpe:
         LOGGER.warning('Could not unmask necessary targets.')
         LOGGER.debug(cpe)

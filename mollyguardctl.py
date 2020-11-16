@@ -10,7 +10,7 @@ from logging import getLogger
 from pathlib import Path
 from socket import gethostname
 from subprocess import CalledProcessError, check_call
-from typing import Iterable
+from typing import Callable, Iterable
 
 
 CONFIG_FILE = '/etc/mollyguardctl.conf'

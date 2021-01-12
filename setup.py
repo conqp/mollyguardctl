@@ -12,7 +12,7 @@ setup(
     author='Richard Neumann',
     author_email='mail@richard-neumann.de',
     python_requires='>=3.8',
-    packages=['mollyguardctl'],
+    py_modules=['mollyguardctl'],
     entry_points={'console_scripts': ['mollyguardctl = mollyguardctl:main']},
     data_files=[
         ('/usr/lib/systemd/system', [

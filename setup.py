@@ -1,21 +1,26 @@
 #! /usr/bin/env python3
-"""Install script."""
+"""Installation script."""
 
 
-from distutils.core import setup
+from setuptools import setup
 
 
 setup(
     name='mollyguardctl',
-    version='latest',
+    use_scm_version=True,
+    setup_requires=['setuptools_scm'],
     author='Richard Neumann',
-    author_email='<mail at richard dash neumann period de>',
-    maintainer='Richard Neumann',
-    maintainer_email='<mail at richard dash neumann period de>',
-    py_modules=['mollyguardctl'],
-    scripts=['mollyguardctl'],
+    author_email='mail@richard-neumann.de',
+    python_requires='>=3.8',
+    packages=['mollyguardctl'],
+    entry_points={'console_scripts': ['mollyguardctl = mollyguardctl:main']},
     data_files=[
         ('/usr/lib/systemd/system', [
             'clear-luks-autodecrypt-key.service',
-            'mollyguard.service'])],
-    description=('Mollyguards your system.'))
+            'mollyguard.service'
+        ])
+    ],
+    url='https://github.com/conqp/',
+    license='GPLv3',
+    description='Mollyguards your system.'
+)

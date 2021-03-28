@@ -1,16 +1,15 @@
 """Systemd molly guard suite to prevent accidental
 reboots and provide autodecrypt option for LUKS.
 """
-from argparse import ArgumentParser
+from argparse import ArgumentParser, Namespace
 from configparser import ConfigParser
-from functools import wraps
 from os import urandom
-from sys import argv, exit  # pylint: disable=W0622
+from sys import argv
 from logging import getLogger
 from pathlib import Path
 from socket import gethostname
 from subprocess import CalledProcessError, check_call
-from typing import Callable, Iterable
+from typing import Iterator, Union
 
 
 CONFIG_FILE = '/etc/mollyguardctl.conf'
@@ -45,7 +44,7 @@ class UserAbort(Exception):
     """Indicates that the user aborted a challenge."""
 
 
-def get_units() -> Iterable[str]:
+def get_units() -> list[str]:
     """Returns the respective units."""
 
     try:
@@ -56,7 +55,7 @@ def get_units() -> Iterable[str]:
     return units.split()
 
 
-def get_luks_settings():
+def get_luks_settings() -> Iterator[Union[str, int]]:
     """Returns the LUKS settings."""
 
     try:
@@ -80,21 +79,21 @@ def get_luks_settings():
         raise ConfigurationError('Key size is not an integer.') from None
 
 
-def systemctl(action: str, *units: str):
+def systemctl(action: str, *units: str) -> int:
     """Invokes systemctl on the respective units."""
 
     systemctl_ = CONFIG.get('MollyGuard', 'systemctl', fallback=SYSTEMCTL)
     return check_call((systemctl_, action, *units))
 
 
-def cryptsetup(action: str, *args: str):
+def cryptsetup(action: str, *args: str) -> int:
     """Runs cryptsetup."""
 
     cryptsetup_ = CONFIG.get('MollyGuard', 'cryptsetup', fallback=CRYPTSETUP)
     return check_call((cryptsetup_, action, *args))
 
 
-def start():
+def start() -> bool:
     """Masks the configured units."""
 
     try:
@@ -107,7 +106,7 @@ def start():
     return True
 
 
-def stop():
+def stop() -> bool:
     """Unmasks the configured units."""
 
     try:
@@ -120,7 +119,7 @@ def stop():
     return True
 
 
-def prepare_luks():
+def prepare_luks() -> bool:
     """Prepares the auto-unlocking of the respective LUKS volume."""
 
     try:
@@ -143,7 +142,7 @@ def prepare_luks():
     return True
 
 
-def clear_luks():
+def clear_luks() -> bool:
     """Clears the LUKS auto-decrypt key from the LUKS device."""
 
     device, keyfile, *_ = get_luks_settings()
@@ -163,7 +162,7 @@ def clear_luks():
     return True
 
 
-def challenge_hostname():
+def challenge_hostname() -> bool:
     """Challenge the user to enter the correct host name."""
 
     try:
@@ -175,7 +174,7 @@ def challenge_hostname():
     return hostname == gethostname()
 
 
-def mollyguard(force_luks: bool = False):
+def mollyguard(force_luks: bool = False) -> None:
     """Runs mollyguard checks."""
 
     ch_hostname = CONFIG.getboolean('MollyGuard', 'hostname', fallback=True)
@@ -192,49 +191,43 @@ def mollyguard(force_luks: bool = False):
             raise ChallengeFailed('Enforced LUKS') from None
 
 
-def mollyguarded(function: Callable):
-    """Decorator factory to molly-guard a function."""
-
-    @wraps(function)
-    def wrapper(*args, force_luks: bool = False, **kwargs):
-        """Wraps the original function."""
-        try:
-            mollyguard(force_luks=force_luks)
-        except ChallengeFailed as challenge:
-            LOGGER.error('Challenge %s failed.', challenge)
-        except UserAbort:
-            LOGGER.error('Aborted by user.')
-        else:
-            function(*args, **kwargs)
-
-    return wrapper
-
-
-@mollyguarded
-def reboot():
-    """Reboots the device."""
+def unlock() -> bool:
+    """Unlocks the LUKS device for a reboot."""
 
     try:
         systemctl('unmask', 'reboot.target', 'shutdown.target')
     except CalledProcessError as cpe:
         LOGGER.warning('Could not unmask necessary targets.')
         LOGGER.debug(cpe)
-        return
+        return False
+
+    return True
+
+
+def reboot() -> bool:
+    """Reboots the device."""
+
+    if not unlock():
+        return False
 
     try:
         systemctl('reboot')
     except CalledProcessError as cpe:
         LOGGER.warning('Could not reboot.')
         LOGGER.debug(cpe)
+        return False
+
+    return True
 
 
-def get_args():
+def get_args() -> Namespace:
     """Returns the command line arguments."""
 
     parser = ArgumentParser(description='Molly guard control CLI.')
     subparsers = parser.add_subparsers(dest='action')
     subparsers.add_parser('start', help='start mollyguarding')
     subparsers.add_parser('stop', help='stop mollyguarding')
+    subparsers.add_parser('unlock', help='unlock LUKS')
     reboot_parser = subparsers.add_parser('reboot', help='reboot the system')
     reboot_parser.add_argument(
         '-l', '--force-luks', action='store_true',
@@ -244,23 +237,40 @@ def get_args():
     return parser.parse_args()
 
 
-def main():
+def main() -> int:  # pylint: disable=R0911
     """Runs the main program."""
 
     args = get_args()
     CONFIG.read(CONFIG_FILE)
 
     if args.action == 'start':
-        exit(0 if start() else 1)
+        return 0 if start() else 1
 
     if args.action == 'stop':
-        exit(0 if stop() else 1)
-
-    if args.action == 'reboot':
-        if reboot(force_luks=args.force_luks):  # pylint: disable=E1123
-            exit(0)
-
-        exit(1)
+        return 0 if stop() else 1
 
     if args.action == 'clear-luks':
-        exit(0 if clear_luks() else 1)
+        return 0 if clear_luks() else 1
+
+    try:
+        mollyguard(force_luks=args.force_luks)
+    except ChallengeFailed as challenge:
+        LOGGER.error('Challenge %s failed.', challenge)
+        return 1
+    except UserAbort:
+        LOGGER.error('Aborted by user.')
+        return 2
+
+    if args.action == 'unlock':
+        if unlock():
+            return 0
+
+        return 1
+
+    if args.action == 'reboot':
+        if reboot():
+            return 0
+
+        return 1
+
+    return 1

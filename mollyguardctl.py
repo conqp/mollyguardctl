@@ -237,7 +237,28 @@ def get_args() -> Namespace:
     return parser.parse_args()
 
 
-def main() -> int:  # pylint: disable=R0911
+def mollyguard_functions(args: Namespace) -> int:
+    """Runs mollyguarded functions."""
+
+    try:
+        mollyguard(force_luks=args.force_luks)
+    except ChallengeFailed as challenge:
+        LOGGER.error('Challenge %s failed.', challenge)
+        return 1
+    except UserAbort:
+        LOGGER.error('Aborted by user.')
+        return 2
+
+    if args.action == 'unlock':
+        return 0 if unlock() else 1
+
+    if args.action == 'reboot':
+        return 0 if reboot() else 1
+
+    return 1
+
+
+def main() -> int:
     """Runs the main program."""
 
     args = get_args()
@@ -252,25 +273,4 @@ def main() -> int:  # pylint: disable=R0911
     if args.action == 'clear-luks':
         return 0 if clear_luks() else 1
 
-    try:
-        mollyguard(force_luks=args.force_luks)
-    except ChallengeFailed as challenge:
-        LOGGER.error('Challenge %s failed.', challenge)
-        return 1
-    except UserAbort:
-        LOGGER.error('Aborted by user.')
-        return 2
-
-    if args.action == 'unlock':
-        if unlock():
-            return 0
-
-        return 1
-
-    if args.action == 'reboot':
-        if reboot():
-            return 0
-
-        return 1
-
-    return 1
+    return mollyguard_functions(args)

@@ -174,7 +174,7 @@ def challenge_hostname() -> bool:
     return hostname == gethostname()
 
 
-def mollyguard(force_luks: bool = False) -> None:
+def mollyguard() -> None:
     """Runs mollyguard checks."""
 
     ch_hostname = CONFIG.getboolean('MollyGuard', 'hostname', fallback=True)
@@ -187,8 +187,7 @@ def mollyguard(force_luks: bool = False) -> None:
         if not prepare_luks():
             raise ChallengeFailed('LUKS')
     except LUKSNotConfigured:
-        if force_luks:
-            raise ChallengeFailed('Enforced LUKS') from None
+        pass
 
 
 def unlock() -> bool:
@@ -228,12 +227,8 @@ def get_args() -> Namespace:
     subparsers.add_parser('start', help='start mollyguarding')
     subparsers.add_parser('stop', help='stop mollyguarding')
     subparsers.add_parser('unlock', help='unlock LUKS')
-    reboot_parser = subparsers.add_parser('reboot', help='reboot the system')
-    reboot_parser.add_argument(
-        '-l', '--force-luks', action='store_true',
-        help='require LUKS auto-decryption')
-    subparsers.add_parser(
-        'clear-luks', help='clear the LUKS auto-decryption key')
+    subparsers.add_parser('reboot', help='reboot the system')
+    subparsers.add_parser('clear-luks', help='clear LUKS auto-decryption key')
     return parser.parse_args()
 
 
@@ -241,7 +236,7 @@ def mollyguard_functions(args: Namespace) -> int:
     """Runs mollyguarded functions."""
 
     try:
-        mollyguard(force_luks=args.force_luks)
+        mollyguard()
     except ChallengeFailed as challenge:
         LOGGER.error('Challenge %s failed.', challenge)
         return 1

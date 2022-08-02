@@ -233,7 +233,7 @@ def get_args() -> Namespace:
 
 
 def mollyguard_functions(args: Namespace) -> int:
-    """Runs mollyguarded functions."""
+    """Runs mollyguard-protected functions."""
 
     try:
         mollyguard()

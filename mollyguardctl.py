@@ -9,7 +9,7 @@ from logging import getLogger
 from pathlib import Path
 from socket import gethostname
 from subprocess import CalledProcessError, check_call
-from typing import Iterator, Union
+from typing import Iterable, Iterator, Union
 
 
 CONFIG_FILE = '/etc/mollyguardctl.conf'
@@ -44,7 +44,7 @@ class UserAbort(Exception):
     """Indicates that the user aborted a challenge."""
 
 
-def get_units() -> list[str]:
+def get_units() -> Iterable[str]:
     """Returns the respective units."""
 
     try:
@@ -93,8 +93,8 @@ def cryptsetup(action: str, *args: str) -> int:
     return check_call((cryptsetup_, action, *args))
 
 
-def start() -> bool:
-    """Masks the configured units."""
+def mask_systemd_units() -> bool:
+    """Masks the configured systemd units."""
 
     try:
         systemctl('mask', *get_units())
@@ -106,8 +106,8 @@ def start() -> bool:
     return True
 
 
-def stop() -> bool:
-    """Unmasks the configured units."""
+def unmask_systemd_units() -> bool:
+    """Unmasks the configured systemd units."""
 
     try:
         systemctl('unmask', *get_units())
@@ -119,7 +119,7 @@ def stop() -> bool:
     return True
 
 
-def prepare_luks() -> bool:
+def unlock_luks() -> bool:
     """Prepares the auto-unlocking of the respective LUKS volume."""
 
     try:
@@ -184,29 +184,16 @@ def mollyguard() -> None:
         raise ChallengeFailed('hostname')
 
     try:
-        if not prepare_luks():
+        if not unlock_luks():
             raise ChallengeFailed('LUKS')
     except LUKSNotConfigured:
         pass
 
 
-def unlock() -> bool:
-    """Unlocks the LUKS device for a reboot."""
-
-    try:
-        systemctl('unmask', 'reboot.target', 'shutdown.target')
-    except CalledProcessError as cpe:
-        LOGGER.warning('Could not unmask necessary targets.')
-        LOGGER.debug(cpe)
-        return False
-
-    return True
-
-
 def reboot() -> bool:
     """Reboots the device."""
 
-    if not unlock():
+    if not unmask_systemd_units():
         return False
 
     try:
@@ -223,7 +210,7 @@ def get_args() -> Namespace:
     """Returns the command line arguments."""
 
     parser = ArgumentParser(description='Molly guard control CLI.')
-    subparsers = parser.add_subparsers(dest='action')
+    subparsers = parser.add_subparsers(dest='action', required=True)
     subparsers.add_parser('start', help='start mollyguarding')
     subparsers.add_parser('stop', help='stop mollyguarding')
     subparsers.add_parser('unlock', help='unlock LUKS')
@@ -244,9 +231,6 @@ def mollyguard_functions(args: Namespace) -> int:
         LOGGER.error('Aborted by user.')
         return 2
 
-    if args.action == 'unlock':
-        return 0 if unlock() else 1
-
     if args.action == 'reboot':
         return 0 if reboot() else 1
 
@@ -260,12 +244,15 @@ def main() -> int:
     CONFIG.read(CONFIG_FILE)
 
     if args.action == 'start':
-        return 0 if start() else 1
+        return 0 if mask_systemd_units() else 1
 
     if args.action == 'stop':
-        return 0 if stop() else 1
+        return 0 if unmask_systemd_units() else 1
 
     if args.action == 'clear-luks':
         return 0 if clear_luks() else 1
+
+    if args.action == 'unlock':
+        return 0 if unlock_luks() else 1
 
     return mollyguard_functions(args)

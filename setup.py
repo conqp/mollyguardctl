@@ -6,15 +6,15 @@ from setuptools import setup
 
 
 setup(
-    name='mollyguardctl',
+    name="mollyguardctl",
     use_scm_version=True,
-    setup_requires=['setuptools_scm'],
-    author='Richard Neumann',
-    author_email='mail@richard-neumann.de',
-    python_requires='>=3.8',
-    py_modules=['mollyguardctl'],
-    entry_points={'console_scripts': ['mollyguardctl = mollyguardctl:main']},
-    url='https://github.com/conqp/',
-    license='GPLv3',
-    description='Mollyguards your system.'
+    setup_requires=["setuptools_scm"],
+    author="Richard Neumann",
+    author_email="mail@richard-neumann.de",
+    python_requires=">=3.8",
+    py_modules=["mollyguardctl"],
+    entry_points={"console_scripts": ["mollyguardctl = mollyguardctl:main"]},
+    url="https://github.com/conqp/",
+    license="GPLv3",
+    description="Mollyguards your system.",
 )
